@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:;base64,=">
+    <title>限号提醒器</title>
+</head>
+<body>
+    <div style="display: flex;">
+        <div>
+            <div style="display: flex;">
+                <p>限号器时间：</p>
+                <p id="notpass_time">xxxx:xx:xx</p>
+            </div>
+            <div style="display: flex;">
+                <p>手机时间：</p>
+                <p id="phone_time">xxxx:xx:xx</p>
+            </div>
+            <div style="display: flex;">
+                <p>当前限行规则：</p>
+                <p id="cur_rule">星期</p>
+            </div>
+            <div style="display: flex;">
+                <p>设置限行日期：</p>
+                <select id="list_rule" style="height: 27px;margin-top: 16px;margin-bottom: 16px;">
+                    <option value="1">星期一</option>
+                    <option value="2">星期二</option>
+                    <option value="3">星期三</option>
+                    <option value="4">星期四</option>
+                    <option value="5">星期五</option>
+                    <option value="dan">单号限行</option>
+                    <option value="shuang">双号限行</option>
+                </select>
+            </div>
+            <div style="display: flex;margin-top: 16px;margin-bottom: 16px;">
+                <button id="sync_time" style="width: 100px;height: 40px; margin-right: 10px; margin-bottom: 5px;padding-left: 0px;padding-right: 0px; background-color: rgb(0, 255, 34);" onclick="update_time()">校准限号器时间</button>
+                <button id="update_rule" style="width: 100px;height: 40px; background-color: rgb(238, 255, 0);" onclick="update_rule()">更新限行规则</button>
+            </div>
+            <div style="margin-top: 50px;">
+                单双号限行规则设置方法：车牌尾号是单号请选择双号限行；车牌尾号是双号请选择单号限行。<br><br>校准或更新后请手动给限号器断电再通电重启。
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+    var list_weekday = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"];
+    var list_stoprule = ["星期一","星期二","星期三","星期四","星期五","单号限行","双号限行"];
+    var not_pass_time = [2021,08,25,12,24,56,6];//页面首次加载时，限号器会把时间按列表形式显示。后续会通过XHR更改此变量。最后一位表示限行规则，非星期几，0-4：周一到周五禁行，5单号禁行，6双号禁行
+    var not_pass_time_sec = 0; //时间戳形式的限号器时间，限号器时间间隔1秒加1000使用
+        //更新当前限行规则
+    var set_week_show = function() {
+        document.getElementById("cur_rule").innerHTML = list_stoprule[not_pass_time[6]];
+        document.getElementById("list_rule").selectedIndex = not_pass_time[6];
+    }
+    function displayTime() {
+        //限号器时间加1秒
+        not_pass_time_sec += 1000;
+
+        //更新限号器时间显示
+        var ll = send_time(new Date(not_pass_time_sec)).split("=");
+        var dd = ll[0]+"-"+ll[1]+"-"+ll[2]+" "+ll[3]+":"+ll[4]+":"+ll[5]+"  "+list_weekday[parseInt(ll[6],10)];
+        var tt = document.getElementById("notpass_time");
+        tt.innerHTML = dd;
+
+        //更新手机时间显示
+        var l = send_time().split("=");
+        var d = l[0]+"-"+l[1]+"-"+l[2]+" "+l[3]+":"+l[4]+":"+l[5]+"  "+list_weekday[parseInt(l[6],10)];
+        var t = document.getElementById("phone_time");
+        t.innerHTML = d;
+    }
+    //间隔1秒更新本地时间
+    // function start_localtime(){
+    //     window.setInterval("displayTime()",1000)//单位是毫秒
+    // }
+    function tran_time(info){//列表样式时间转换为时间戳
+        info[1] = info[1] -1;
+        tt = new Date(info[0],info[1],info[2],info[3],info[4],info[5]);
+        return tt.getTime();
+    }
+    set_week_show();
+    not_pass_time_sec = tran_time(not_pass_time);
+    var start_localtime = window.setInterval("displayTime()",1000);//单位是毫秒
+    //返回时间格式字符串2021=10=08=18=33=48=01：年=月=日=时=分=秒=星期
+    function send_time(info){
+        if (info){
+            //console.log("有参数传进来")
+            t = info;
+        }else{
+            var t = new Date();
+        }
+        var yy = t.getFullYear(),mm = t.getMonth(),dd = t.getDate(),h = t.getHours(),m = t.getMinutes(),s = t.getSeconds(),d = t.getDay();
+        var l = [yy,mm,dd,h,m,s,d];
+        //月份改成取值范围1-12
+        l[1] = l[1] + 1;
+        //星期取值范围改成0星期一--1星期二--2星期3--。。。--6星期日
+        if (l[6] == 0) {
+            l[6] = 6;
+        }else{
+            l[6] = l[6] -1;
+        }
+        var ll = "";
+        for (var i=0;i<7;i++){
+            temp = l[i].toString();
+            if (temp.length == 1){
+                ll = ll + "0" + temp + "=";
+            }else{
+                ll = ll + temp + "=";
+            }
+        }
+        return ll.substring(0,22);
+    }
+    //获取限行规则
+    function send_rule(){
+        var x=document.getElementById("list_rule").selectedIndex;;
+        console.log(x);
+        //接收方规则表示 0星期一--1星期二--2星期3--3星期四--4星期五--5单号--6双号
+        return x.toString();
+    }
+    var update_time = function() {
+        get_token("http://192.168.0.1/updatetimev0.1",send_time());
+    }
+    var update_rule = function(){
+        get_token("http://192.168.0.1/updaterulev0.1",send_rule());
+    }
+    var get_token = function(url,info) {
+        document.getElementById("sync_time").disabled = true
+        document.getElementById("update_rule").disabled = true
+        var xmlhttp = new XMLHttpRequest();
+        let txt;
+        xmlhttp.onreadystatechange = function() {
+            if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                window.clearInterval(start_localtime);
+                txt = xmlhttp.responseText;
+                not_pass_time =  JSON.parse(txt)["data"];
+                set_week_show();
+                not_pass_time_sec = tran_time(not_pass_time);
+                start_localtime = window.setInterval("displayTime()",1000);
+                document.getElementById("sync_time").disabled = false
+                document.getElementById("update_rule").disabled = false
+                // alert("执行成功")
+            }
+        }
+        xmlhttp.open("POST",url,true);
+        xmlhttp.timeout = 5000
+        xmlhttp.ontimeout = function(){
+            document.getElementById("sync_time").disabled = false
+            document.getElementById("update_rule").disabled = false
+            alert("连接限号器失败，请重试或者重启限号器再重新连接")
+        }
+        xmlhttp.send("now=" + info);
+    }
+    //接收方星期表示 0星期一--1星期二--2星期3--。。。--6星期日
+    </script>
+</body>
+</html>
